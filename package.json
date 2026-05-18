@@ -1,6 +1,6 @@
 {
   "name": "@compresh/openclaw-hook",
-  "version": "0.1.1",
+  "version": "0.1.5",
   "description": "OpenClaw hook for transparent context compression via Compresh — episodic memory architecture for LLMs",
   "keywords": [
     "openclaw",

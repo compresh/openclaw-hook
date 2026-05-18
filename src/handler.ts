@@ -18,6 +18,9 @@
 
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import * as fs from 'node:fs/promises';
+import * as path from 'node:path';
+import * as os from 'node:os';
 
 // ─────────────────────────────────────────────────────────────────
 // Types — kept loose because OpenClaw event shape varies across builds
@@ -63,7 +66,21 @@ interface CompressResult {
 // ─────────────────────────────────────────────────────────────────
 
 const COMPRESH_API_KEY = process.env.COMPRESH_API_KEY ?? '';
-const PYTHON_BIN = process.env.COMPRESH_PYTHON_BIN ?? 'python3';
+
+// Default: launch the standalone `compresh-mcp` binary that pipx /
+// pip install puts on PATH. Override via COMPRESH_BIN_OVERRIDE for
+// custom Python interpreters (e.g. legacy `python3 -m compresh_mcp.server`).
+//
+// Why not `python3 -m compresh_mcp.server`? When `compresh-mcp` is
+// installed via pipx (recommended on macOS), the package lives in
+// an isolated venv. The system `python3` cannot import
+// `compresh_mcp.server` — the subprocess exits immediately.
+// The `compresh-mcp` shim script is the only entry point that
+// reliably resolves the right Python interpreter on all platforms.
+const COMPRESH_BIN = process.env.COMPRESH_BIN ?? 'compresh-mcp';
+const COMPRESH_BIN_ARGS = (process.env.COMPRESH_BIN_ARGS ?? '')
+  .split(' ')
+  .filter((s) => s.length > 0);
 const PROTECTION_MODE =
   (process.env.COMPRESH_PROTECTION_MODE as 'agresif' | 'balanced' | 'muhafazakar') ?? 'balanced';
 const PROVIDER_HINT = process.env.COMPRESH_PROVIDER_HINT ?? 'anthropic';
@@ -87,8 +104,8 @@ async function ensureMcpClient(): Promise<Client> {
       if (COMPRESH_API_KEY) env.COMPRESH_API_KEY = COMPRESH_API_KEY;
 
       mcpTransport = new StdioClientTransport({
-        command: PYTHON_BIN,
-        args: ['-m', 'compresh_mcp.server'],
+        command: COMPRESH_BIN,
+        args: COMPRESH_BIN_ARGS,
         env,
       });
 
@@ -122,24 +139,183 @@ async function shutdownMcpClient(): Promise<void> {
 
 // ─────────────────────────────────────────────────────────────────
 // Transcript extraction — try several plausible event shapes
+//
+// OpenClaw (>= 2026.05) does NOT put the transcript directly in
+// event.context. Instead, context carries pointers to the session
+// JSONL file:
+//
+//   event.context.previousSessionEntry.sessionFile
+//   event.context.sessionEntry.sessionFile
+//
+// The JSONL is line-delimited; entries with type === "message" hold
+// the actual chat messages (role + content). This is the same shape
+// the bundled session-memory hook reads.
 // ─────────────────────────────────────────────────────────────────
 
-function extractTranscript(event: OpenClawEvent): AnyMessage[] | null {
+function normalizeContent(content: unknown): string {
+  // compresh-mcp's `compress` tool expects `content: string` per message.
+  // OpenClaw session JSONLs (and Anthropic SDK output in general) often
+  // carry block arrays: [{type: "text", text: "..."}, {type: "tool_use", ...}].
+  // Flatten to a single string so downstream compression treats the turn
+  // as one unit.
+  if (typeof content === 'string') return content;
+  if (content == null) return '';
+  if (Array.isArray(content)) {
+    const parts: string[] = [];
+    for (const block of content) {
+      if (typeof block === 'string') {
+        parts.push(block);
+        continue;
+      }
+      if (!block || typeof block !== 'object') {
+        parts.push(String(block));
+        continue;
+      }
+      const b = block as Record<string, unknown>;
+      const btype = typeof b.type === 'string' ? (b.type as string) : '';
+      if (btype === 'text' && typeof b.text === 'string') {
+        parts.push(b.text as string);
+      } else if (btype === 'tool_use') {
+        const name = typeof b.name === 'string' ? b.name : '?';
+        parts.push(`[tool_use ${name}]`);
+      } else if (btype === 'tool_result') {
+        const inner = b.content;
+        parts.push(
+          typeof inner === 'string' ? inner : JSON.stringify(inner ?? null)
+        );
+      } else if (btype === 'image') {
+        parts.push('[image]');
+      } else {
+        parts.push(JSON.stringify(b));
+      }
+    }
+    return parts.filter((s) => s.length > 0).join('\n');
+  }
+  return JSON.stringify(content);
+}
+
+async function readJsonlMessages(filePath: string): Promise<AnyMessage[] | null> {
+  try {
+    const content = await fs.readFile(filePath, 'utf-8');
+    const messages: AnyMessage[] = [];
+    for (const line of content.trim().split('\n')) {
+      if (!line) continue;
+      try {
+        const entry = JSON.parse(line) as {
+          type?: string;
+          message?: { role?: string; content?: unknown };
+        };
+        if (entry.type === 'message' && entry.message) {
+          const m = entry.message;
+          if (
+            (m.role === 'user' || m.role === 'assistant') &&
+            m.content !== undefined &&
+            m.content !== null
+          ) {
+            const normalizedContent = normalizeContent(m.content);
+            if (normalizedContent.length > 0) {
+              messages.push({ role: m.role, content: normalizedContent });
+            }
+          }
+        }
+      } catch {
+        // skip malformed line
+      }
+    }
+    return messages.length > 0 ? messages : null;
+  } catch {
+    return null;
+  }
+}
+
+async function findRecentSessionJsonl(): Promise<string | null> {
+  // OpenClaw stores session JSONLs under one of these locations:
+  //   ~/.openclaw/workspace/sessions/<sessionId>.jsonl
+  //   ~/.openclaw/agents/<agentId>/sessions/<sessionId>.jsonl
+  // Without a direct context pointer we pick the most recently
+  // modified .jsonl across both candidates.
+  const home = process.env.HOME || os.homedir();
+  const candidates = [
+    process.env.OPENCLAW_WORKSPACE_DIR
+      ? path.join(process.env.OPENCLAW_WORKSPACE_DIR, 'sessions')
+      : null,
+    path.join(home, '.openclaw', 'workspace', 'sessions'),
+    path.join(home, '.openclaw', 'agents', 'main', 'sessions'),
+  ].filter((p): p is string => Boolean(p));
+
+  let best: { file: string; mtime: number } | null = null;
+  for (const dir of candidates) {
+    try {
+      const entries = await fs.readdir(dir);
+      for (const name of entries) {
+        if (!name.endsWith('.jsonl') || name.includes('.reset.')) continue;
+        const fp = path.join(dir, name);
+        try {
+          const stat = await fs.stat(fp);
+          if (!best || stat.mtimeMs > best.mtime) {
+            best = { file: fp, mtime: stat.mtimeMs };
+          }
+        } catch {
+          /* skip */
+        }
+      }
+    } catch {
+      /* dir does not exist */
+    }
+  }
+  return best?.file ?? null;
+}
+
+async function extractTranscript(event: OpenClawEvent): Promise<AnyMessage[] | null> {
   const ctx = event.context ?? {};
 
-  // Most likely paths, in order
+  // ── Debug: log what's actually in the event so we can see what
+  //    fields OpenClaw populates for compaction events. Strip down to
+  //    key names to avoid leaking content into logs.
+  try {
+    const ctxKeys = Object.keys(ctx).sort().join(', ');
+    const sessionKey = (event as { sessionKey?: unknown }).sessionKey;
+    console.log(
+      `[compresh-hook] event.context keys: [${ctxKeys}] | event.sessionKey: ${
+        typeof sessionKey === 'string' ? sessionKey : 'n/a'
+      }`
+    );
+  } catch {
+    /* swallow logging errors */
+  }
+
+  // 1) Defensive — earlier OpenClaw versions or other gateways may
+  //    embed messages directly.
   if (Array.isArray(ctx.transcript) && ctx.transcript.length > 0) {
     return ctx.transcript as AnyMessage[];
   }
-
-  const messages = (ctx as Record<string, unknown>).messages;
-  if (Array.isArray(messages) && messages.length > 0) {
-    return messages as AnyMessage[];
+  const inlineMessages = (ctx as Record<string, unknown>).messages;
+  if (Array.isArray(inlineMessages) && inlineMessages.length > 0) {
+    return inlineMessages as AnyMessage[];
+  }
+  const inlineHistory = (ctx as Record<string, unknown>).history;
+  if (Array.isArray(inlineHistory) && inlineHistory.length > 0) {
+    return inlineHistory as AnyMessage[];
   }
 
-  const history = (ctx as Record<string, unknown>).history;
-  if (Array.isArray(history) && history.length > 0) {
-    return history as AnyMessage[];
+  // 2) OpenClaw bundled-hook pattern — context may carry a sessionEntry
+  //    object with a `sessionFile` JSONL pointer. Read & parse.
+  const sessionEntry = ((ctx as Record<string, unknown>).previousSessionEntry
+    ?? (ctx as Record<string, unknown>).sessionEntry
+    ?? {}) as Record<string, unknown>;
+  const sessionFile = sessionEntry.sessionFile;
+  if (typeof sessionFile === 'string' && sessionFile.length > 0) {
+    console.log(`[compresh-hook] using sessionEntry.sessionFile: ${sessionFile}`);
+    return await readJsonlMessages(sessionFile);
+  }
+
+  // 3) Last-resort fallback — scan default session directories for the
+  //    most recently modified JSONL. Works for compaction events where
+  //    context only carries metadata (messageCount/tokensBefore/etc).
+  const recent = await findRecentSessionJsonl();
+  if (recent) {
+    console.log(`[compresh-hook] fallback: scanning most recent session jsonl: ${recent}`);
+    return await readJsonlMessages(recent);
   }
 
   return null;
@@ -213,7 +389,7 @@ export default async function handler(event: OpenClawEvent): Promise<void> {
 
   // ── session:compact:before ──────────────────────────────────────
   if (action === 'compact:before') {
-    const transcript = extractTranscript(event);
+    const transcript = await extractTranscript(event);
     if (!transcript) {
       console.log(
         `[compresh-hook] session:compact:before for ${sessionId} — no transcript in event.context; skipping`
