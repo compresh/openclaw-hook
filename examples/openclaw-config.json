@@ -1,0 +1,20 @@
+{
+  "_comment": "Example OpenClaw config (~/.openclaw/openclaw.json) with the Compresh hook enabled.",
+  "_doc": "https://github.com/compresh/openclaw-hook",
+  "hooks": {
+    "internal": {
+      "enabled": true,
+      "entries": {
+        "compresh-compaction": {
+          "enabled": true,
+          "env": {
+            "COMPRESH_API_KEY": "sk-comp_PASTE_YOUR_KEY_HERE_OR_REMOVE_FOR_FREE_MODE",
+            "COMPRESH_PROTECTION_MODE": "balanced",
+            "COMPRESH_PROVIDER_HINT": "anthropic",
+            "COMPRESH_MODEL_HINT": "claude-sonnet-4-5"
+          }
+        }
+      }
+    }
+  }
+}

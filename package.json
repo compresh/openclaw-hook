@@ -1,0 +1,65 @@
+{
+  "name": "@compresh/openclaw-hook",
+  "version": "0.1.0",
+  "description": "OpenClaw hook for transparent context compression via Compresh — episodic memory architecture for LLMs",
+  "keywords": [
+    "openclaw",
+    "openclaw-hook",
+    "compresh",
+    "context-compression",
+    "llm",
+    "mcp",
+    "agent-middleware",
+    "tulving",
+    "episodic-memory"
+  ],
+  "license": "MIT",
+  "author": {
+    "name": "Compresh Ltd",
+    "email": "hello@compre.sh",
+    "url": "https://compre.sh"
+  },
+  "homepage": "https://compre.sh",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/compresh/openclaw-hook.git"
+  },
+  "bugs": {
+    "url": "https://github.com/compresh/openclaw-hook/issues"
+  },
+  "type": "module",
+  "main": "./dist/handler.js",
+  "types": "./dist/handler.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/handler.js",
+      "types": "./dist/handler.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "HOOK.md",
+    "README.md",
+    "LICENSE",
+    "examples"
+  ],
+  "openclaw": {
+    "type": "hook",
+    "hookName": "compresh-compaction",
+    "events": ["session:compact:before", "session:compact:after"]
+  },
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.4.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
