@@ -61,13 +61,15 @@ Get an API key at https://compre.sh/signup.
 | Tier | Budget | TUL 1.0 access | Savings-share |
 |---|---|---|---|
 | Anonymous / no key | n/a | ❌ | 0% (free, tulbase only) |
-| Free tier | $0 | ❌ | 0% (free, tulbase only) |
-| Free tier | > $0 | ✅ | 30% |
-| Pro monthly | n/a | ✅ | 20% |
-| Pro quarterly / semi-annual | n/a | ✅ | 16% |
-| Pro annual | n/a | ✅ | 12% |
+| Free / no budget | $0 | ❌ | 0% (free, tulbase only) |
+| **Starter** (free + loaded budget) | > $0 | ✅ | **30%** |
+| **Pro Quarterly** ($18 / 3 mo) | n/a | ✅ | **20%** |
+| **Pro Semi-Annual** ($33 / 6 mo) | n/a | ✅ | **16%** |
+| **Pro Annual** ($60 / yr) | n/a | ✅ | **12%** |
 
-You only pay for the savings the TUL 1.0 layer adds on top of what `tulbase` (local, MIT) already gave you for free.
+All top-ups receive a permanent **25% discount** at payment time (load $10 → pay $7.50). See [compre.sh/pricing](https://compre.sh/pricing) for the full pricing page.
+
+You only pay for the savings the TUL 1.0 server layer adds on top of what `tulbase` (local, MIT) already gave you for free.
 
 ## Environment variables
 
@@ -90,8 +92,8 @@ This visibility is the main short-term value: you see what Compresh would save v
 
 ## Privacy
 
-- Transcript is processed locally by `compresh-mcp` (Python).
-- If `COMPRESH_API_KEY` is set, a sanitised pre-compressed transcript is sent to `api.compre.sh` for the TUL 1.0 layer. Your provider key is never sent.
+- Transcript is processed locally by `compresh-mcp` (Python) using the bundled open-source `tulbase` core (LexRank + Protection Zone + modality elision). Your provider key never leaves OpenClaw.
+- If `COMPRESH_API_KEY` is set, the transcript is also sent to `api.compre.sh/v1/tul1` for the TUL 1.0 server-side enhancement (Q-protective ranking, epistemic markers). The local result is used as a fallback if the server is unreachable. Your provider key is never sent.
 - Telemetry: per-call savings totals are reported (no message content) to `api.compre.sh/v1/usage/report` to compute Mod C fees.
 
 ## Architecture

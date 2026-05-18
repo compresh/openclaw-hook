@@ -102,11 +102,13 @@ Pricing (Mod C):
 | Tier | Budget | TUL 1.0 access | Savings-share |
 |---|---|---|---|
 | Anonymous | n/a | ❌ | 0% (free, tulbase only) |
-| Free | $0 | ❌ | 0% (free, tulbase only) |
-| Free | > $0 | ✅ | 30% |
-| Pro monthly | n/a | ✅ | 20% |
-| Pro quarterly / semi-annual | n/a | ✅ | 16% |
-| Pro annual | n/a | ✅ | 12% |
+| Free / no budget | $0 | ❌ | 0% (free, tulbase only) |
+| **Starter** (free + loaded budget) | > $0 | ✅ | **30%** |
+| **Pro Quarterly** ($18 / 3 mo) | n/a | ✅ | **20%** |
+| **Pro Semi-Annual** ($33 / 6 mo) | n/a | ✅ | **16%** |
+| **Pro Annual** ($60 / yr) | n/a | ✅ | **12%** |
+
+All top-ups receive a permanent **25% discount** at payment time (load $10 → pay $7.50). See [compre.sh/pricing](https://compre.sh/pricing) for the full pricing page.
 
 Get an API key at https://compre.sh/signup.
 
