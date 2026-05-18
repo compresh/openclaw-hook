@@ -6,9 +6,9 @@ metadata:
     "openclaw": {
       "emoji": "🗜️",
       "events": ["session:compact:before", "session:compact:after"],
+      "always": true,
       "requires": {
-        "bins": ["python3"],
-        "env": []
+        "bins": ["python3"]
       },
       "install": {
         "npm": "@compresh/openclaw-hook",

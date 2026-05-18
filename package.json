@@ -1,6 +1,6 @@
 {
   "name": "@compresh/openclaw-hook",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "OpenClaw hook for transparent context compression via Compresh — episodic memory architecture for LLMs",
   "keywords": [
     "openclaw",
@@ -44,12 +44,10 @@
     "examples"
   ],
   "openclaw": {
-    "type": "hook",
-    "hookName": "compresh-compaction",
-    "events": ["session:compact:before", "session:compact:after"]
+    "hooks": ["./dist"]
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && cp HOOK.md dist/HOOK.md",
     "prepublishOnly": "npm run build"
   },
   "dependencies": {

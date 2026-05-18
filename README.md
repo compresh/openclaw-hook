@@ -28,10 +28,14 @@ You keep your provider API key. Compresh only inspects the transcript locally an
 
 ```bash
 # 1. Install the Python MCP server (local-only, free tier)
-pip install compresh-mcp
+#    macOS recommends pipx (system Python is PEP 668 protected):
+brew install pipx && pipx ensurepath
+pipx install compresh-mcp
+#    Linux / managed Python:
+#    pip install compresh-mcp
 
-# 2. Install the hook
-mcporter install @compresh/openclaw-hook --target openclaw
+# 2. Install the hook into OpenClaw
+openclaw plugins install @compresh/openclaw-hook
 
 # 3. Enable
 openclaw hooks enable compresh-compaction
