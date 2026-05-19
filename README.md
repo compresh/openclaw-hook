@@ -1,56 +1,42 @@
 # @compresh/openclaw-hook
 
-OpenClaw hook for transparent context compression via Compresh — episodic memory architecture for LLMs.
+OpenClaw Plugin SDK hook for **per-turn context compression** via [Compresh](https://compre.sh) — episodic memory architecture for LLM conversations.
 
-## What this is
+> **v0.2.0 — breaking change.** This release migrates from the OpenClaw *internal* hook surface (`session:compact:before` / `session:compact:after`) to the **Plugin SDK** (`before_prompt_build` + `llm_output`). The plugin now fires on every model call, not just on native compaction. v0.1.x is deprecated.
 
-A small OpenClaw internal hook (~250 LoC) that fires on `session:compact:before` and `session:compact:after` events. It calls the local `compresh-mcp` Python server (over stdio MCP) to compute a Compresh-compressed view of the transcript.
+## What it does
 
-You keep your provider API key. Compresh only inspects the transcript locally and (optionally, with an API key) sends a sanitised request to `api.compre.sh` for the TUL 1.0 advanced layer.
+On every agent turn, the hook intercepts `before_prompt_build`, sends the conversation history to `https://api.compre.sh/v1/tul1`, and appends a Compresh-compressed view of older turns to the system prompt. The protection-zone tail (last 2 / 4 / 8 turns depending on mode) stays raw and untouched in the message list.
 
-## How it differs from a proxy
-
-| Layer | Drop-in proxy (Mod A) | This hook (Mod B) |
-|---|---|---|
-| Provider API key | sent to api.compre.sh | stays in OpenClaw |
-| LLM call route | agent → api.compre.sh → provider | agent → provider (direct) |
-| Compresh runs | server-side | local Python (`compresh-mcp`) |
-| TUL 1.0 advanced layer | always server-side | optional, server-side only when `COMPRESH_API_KEY` is set |
-| Privacy | medium | high |
+Your **provider API key never leaves OpenClaw**. Only the transcript is sent to Compresh, and only when a Compresh API key is configured. Without a key the plugin stays passive.
 
 ## Requirements
 
-- **OpenClaw** gateway
-- **Python 3.10+** with `compresh-mcp` installed
-- **Node.js 18+** (OpenClaw runtime)
+- **OpenClaw** v2026.5.0 or later
+- **Node.js** 18+
+- A Compresh API key (`sk-comp_...`) — sign up at [compre.sh/signup](https://compre.sh/signup)
 
 ## Install
 
 ```bash
-# 1. Install the Python MCP server (local-only, free tier)
-#    macOS recommends pipx (system Python is PEP 668 protected):
-brew install pipx && pipx ensurepath
-pipx install compresh-mcp
-#    Linux / managed Python:
-#    pip install compresh-mcp
-
-# 2. Install the hook into OpenClaw
-openclaw plugins install @compresh/openclaw-hook
-
-# 3. Enable
-openclaw hooks enable compresh-compaction
+openclaw plugins install npm:@compresh/openclaw-hook
 ```
 
-For paid tier (TUL 1.0 server enhancement), set `COMPRESH_API_KEY`:
+## Configure
+
+Edit `~/.openclaw/openclaw.json`:
 
 ```json
 {
-  "hooks": {
-    "internal": {
-      "entries": {
-        "compresh-compaction": {
-          "enabled": true,
-          "env": { "COMPRESH_API_KEY": "sk-comp_xxx" }
+  "plugins": {
+    "entries": {
+      "compresh": {
+        "hooks": {
+          "allowConversationAccess": true
+        },
+        "config": {
+          "apiKey": "sk-comp_...",
+          "protectionMode": "balanced"
         }
       }
     }
@@ -58,79 +44,59 @@ For paid tier (TUL 1.0 server enhancement), set `COMPRESH_API_KEY`:
 }
 ```
 
-Get an API key at https://compre.sh/signup.
+**`hooks.allowConversationAccess: true` is required.** Non-bundled plugins cannot read raw conversation hooks (`before_prompt_build`, `llm_input`, `llm_output`, etc.) without this opt-in.
 
-## Pricing
+## Config options
 
-| Tier | Budget | TUL 1.0 access | Savings-share |
-|---|---|---|---|
-| Anonymous / no key | n/a | ❌ | 0% (free, tulbase only) |
-| Free / no budget | $0 | ❌ | 0% (free, tulbase only) |
-| **Starter** (free + loaded budget) | > $0 | ✅ | **30%** |
-| **Pro Quarterly** ($18 / 3 mo) | n/a | ✅ | **20%** |
-| **Pro Semi-Annual** ($33 / 6 mo) | n/a | ✅ | **16%** |
-| **Pro Annual** ($60 / yr) | n/a | ✅ | **12%** |
-
-All top-ups receive a permanent **25% discount** at payment time (load $10 → pay $7.50). See [compre.sh/pricing](https://compre.sh/pricing) for the full pricing page.
-
-You only pay for the savings the TUL 1.0 server layer adds on top of what `tulbase` (local, MIT) already gave you for free.
-
-## Environment variables
-
-| Var | Default | Notes |
+| Key | Default | Notes |
 |---|---|---|
-| `COMPRESH_API_KEY` | unset | Enables TUL 1.0 server enhancement. Leave unset for free local-only mode |
-| `COMPRESH_PYTHON_BIN` | `python3` | Path to Python interpreter that has `compresh-mcp` installed |
-| `COMPRESH_PROTECTION_MODE` | `balanced` | `agresif` / `balanced` / `muhafazakar` — last N raw messages |
-| `COMPRESH_PROVIDER_HINT` | `anthropic` | Reported in telemetry for per-provider stats |
-| `COMPRESH_MODEL_HINT` | `claude-sonnet-4-5` | Reported in telemetry for per-model stats |
+| `apiKey` | `$COMPRESH_API_KEY` | Compresh API key. Required for compression. |
+| `endpoint` | `https://api.compre.sh/v1/tul1` | Override for self-hosted Compresh. |
+| `protectionMode` | `balanced` | `aggressive` / `balanced` / `conservative` — trailing raw turns (2 / 4 / 8). |
+| `providerHint` | `anthropic` | Reported in telemetry for per-provider stats. |
+| `modelHint` | `claude-sonnet-4-5` | Reported in telemetry for per-model stats. |
+| `minMessages` | `6` | Skip compression below this turn count. |
+| `timeoutMs` | `8000` | HTTP timeout for the /v1/tul1 call. |
+
+Env variable fallbacks (`COMPRESH_API_KEY`, `COMPRESH_PROTECTION_MODE`, etc.) work for every option except `endpoint`.
 
 ## What you see in logs
 
 ```
-[compresh-hook] session:compact:before session-abc-123 — applied=true, tier=free, messages=42 (87432 chars), saving=21105 chars (24.1%), protection=balanced
-[compresh-hook] session:compact:after session-abc-123 | native: 18450 → 4210 tok (Δ14240) | compresh: 21105 chars saved | tier=free
+[compresh] before_prompt_build sid=openclaw-abc12345 applied tier=pro_quarterly compressed=14/22 saving=18420chars
+[compresh] llm_output sid=openclaw-abc12345 input=4210 output=850 budget=180000
 ```
 
-This visibility is the main short-term value: you see what Compresh would save vs what OpenClaw's native compaction does. From there you can decide whether to switch to a drop-in proxy (Mod A) or stay on hook-mode.
+## Pricing
+
+| Tier | Budget required | Savings-share |
+|---|---|---|
+| Free / no budget | — | 0% (plugin stays passive) |
+| Starter (free + loaded budget) | > $0 | 30% |
+| Pro Quarterly ($18 / 3 mo) | — | 20% |
+| Pro Semi-Annual ($33 / 6 mo) | — | 16% |
+| Pro Annual ($60 / yr) | — | 12% |
+
+Top-ups receive a permanent **25% discount** at payment time. Full pricing: [compre.sh/pricing](https://compre.sh/pricing).
 
 ## Privacy
 
-- Transcript is processed locally by `compresh-mcp` (Python) using the bundled open-source `tulbase` core (LexRank + Protection Zone + modality elision). Your provider key never leaves OpenClaw.
-- If `COMPRESH_API_KEY` is set, the transcript is also sent to `api.compre.sh/v1/tul1` for the TUL 1.0 server-side enhancement (Q-protective ranking, epistemic markers). The local result is used as a fallback if the server is unreachable. Your provider key is never sent.
-- Telemetry: per-call savings totals are reported (no message content) to `api.compre.sh/v1/usage/report` to compute Mod C fees.
+- The conversation transcript is sent to `api.compre.sh/v1/tul1` when an API key is set. No transcript leaves your machine without a key.
+- Your **provider** API key (the one you use to call Claude / GPT / etc.) stays inside OpenClaw and is never sent to Compresh.
+- Per-call savings totals are logged to `/v1/usage/report` for the dashboard. No message content is sent in telemetry.
 
-## Architecture
+## Why a hook, not a proxy?
 
-```
-OpenClaw gateway
-   │
-   ├─ session:compact:before fires
-   │     │
-   │     └─→ this hook
-   │             │
-   │             ├─→ Python subprocess: compresh-mcp (stdio MCP)
-   │             │       │
-   │             │       ├─→ tulbase compress (local, MIT, free)
-   │             │       │
-   │             │       └─→ (if COMPRESH_API_KEY) → api.compre.sh/v1/tul1
-   │             │             ├─ tier/budget check
-   │             │             └─ TUL 1.0 enhance (Q matrix + epistemic + modality)
-   │             │
-   │             └─→ telemetry → api.compre.sh/v1/usage/report
-   │
-   └─ OpenClaw runs its own compaction + sends to your LLM provider with your key
-```
-
-## License
-
-MIT — Compresh Ltd, 2026.
+A drop-in proxy means routing your provider key through Compresh — fewer privacy boundaries. A hook keeps the key inside OpenClaw and only inspects the transcript. For users who do not want their provider key to leave their machine, the hook path is the safer integration.
 
 ## Related
 
-- Compresh: https://compre.sh
-- Documentation: https://compre.sh/docs/overview
-- compresh-mcp (Python, BUSL-1.1): https://github.com/compresh/compresh-mcp
-- tulbase (Python, MIT, open core): https://github.com/compresh/tulbase
-- Issues: https://github.com/compresh/openclaw-hook/issues
-- Support: hello@compre.sh
+- Compresh: <https://compre.sh>
+- Compresh docs: <https://compre.sh/docs/overview>
+- Issues: <https://github.com/compresh/openclaw-hook/issues>
+- OpenClaw Plugin SDK: <https://docs.openclaw.ai/plugins/sdk-overview>
+- OpenClaw hook catalog: <https://docs.openclaw.ai/plugins/hooks>
+
+## License
+
+MIT

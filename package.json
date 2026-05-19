@@ -1,17 +1,17 @@
 {
   "name": "@compresh/openclaw-hook",
-  "version": "0.1.5",
-  "description": "OpenClaw hook for transparent context compression via Compresh — episodic memory architecture for LLMs",
+  "version": "0.3.1",
+  "description": "OpenClaw Plugin SDK hook for per-turn context compression via Compresh — episodic memory architecture for LLMs",
   "keywords": [
     "openclaw",
-    "openclaw-hook",
+    "openclaw-plugin",
     "compresh",
     "context-compression",
     "llm",
-    "mcp",
     "agent-middleware",
     "tulving",
-    "episodic-memory"
+    "episodic-memory",
+    "plugin-sdk"
   ],
   "license": "MIT",
   "author": {
@@ -28,33 +28,42 @@
     "url": "https://github.com/compresh/openclaw-hook/issues"
   },
   "type": "module",
-  "main": "./dist/handler.js",
-  "types": "./dist/handler.d.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/handler.js",
-      "types": "./dist/handler.d.ts"
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
     }
   },
   "files": [
     "dist",
-    "HOOK.md",
+    "openclaw.plugin.json",
     "README.md",
-    "LICENSE",
-    "examples"
+    "LICENSE"
   ],
   "openclaw": {
-    "hooks": ["./dist"]
+    "extensions": ["./src/index.ts"],
+    "runtimeExtensions": ["./dist/index.js"]
   },
   "scripts": {
-    "build": "tsc && cp HOOK.md dist/HOOK.md",
+    "build": "tsc && cp openclaw.plugin.json dist/openclaw.plugin.json",
     "prepublishOnly": "npm run build"
+  },
+  "peerDependencies": {
+    "openclaw": ">=2026.5.0"
+  },
+  "peerDependenciesMeta": {
+    "openclaw": {
+      "optional": false
+    }
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
+    "openclaw": "^2026.5.0",
     "typescript": "^5.4.0"
   },
   "engines": {
