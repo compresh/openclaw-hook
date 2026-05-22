@@ -1,5 +1,5 @@
 /**
- * @compresh/openclaw-hook — v0.3.0
+ * @compresh/openclaw-hook — v0.3.3
  *
  * Plugin SDK hook for per-turn context compression via Compresh.
  * Transport: stdio MCP to `compresh-mcp` (Python, pipx-installed).
@@ -207,16 +207,37 @@ async function ensureMcpClient(
           command: binPath,
           args,
           env,
+          // Capture the subprocess stderr instead of inheriting it. The
+          // OpenClaw gateway surfaces inherited child stderr in the chat
+          // TUI, so compresh-mcp's startup banner / warnings / tracebacks
+          // would leak into the user's conversation. Pipe it here and
+          // re-emit through our own logger (which goes to the gateway log).
+          stderr: 'pipe',
         });
 
         const client = new Client(
-          { name: 'compresh-openclaw-hook', version: '0.3.0' },
+          { name: 'compresh-openclaw-hook', version: '0.3.3' },
           { capabilities: {} }
         );
 
         await client.connect(mcpTransport);
         mcpClient = client;
         log(`[compresh] mcp-connected bin=${binPath}`);
+
+        // Drain compresh-mcp stderr → our logger, line by line.
+        const errStream = mcpTransport.stderr;
+        if (errStream) {
+          let buf = '';
+          errStream.on('data', (chunk: Buffer) => {
+            buf += chunk.toString();
+            const lines = buf.split('\n');
+            buf = lines.pop() ?? '';
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (trimmed) log(`[compresh-mcp] ${trimmed}`);
+            }
+          });
+        }
       } catch (err) {
         log(`[compresh] mcp-connect-failed: ${(err as Error).message}`);
         mcpConnectPromise = null;
@@ -285,7 +306,7 @@ export default definePluginEntry({
     };
 
     log(
-      `[compresh] register v0.3.0 transport=mcp logger=${logger ? 'present' : 'console.error'}`
+      `[compresh] register v0.3.3 transport=mcp logger=${logger ? 'present' : 'console.error'}`
     );
 
     // ── before_prompt_build: rewrite history → compressed system context ──

@@ -2,9 +2,7 @@
   "id": "compresh",
   "name": "Compresh",
   "description": "Per-turn context compression — episodic memory architecture for LLM conversations",
-  "activation": {
-    "onStartup": true
-  },
+  "version": "0.3.3",
   "configSchema": {
     "type": "object",
     "additionalProperties": false,
@@ -38,8 +36,56 @@
       "timeoutMs": {
         "type": "integer",
         "minimum": 1000,
-        "description": "HTTP timeout for the /v1/tul1 call in milliseconds. Default: 8000."
+        "description": "HTTP timeout for the compresh-mcp compress call in milliseconds. Default: 10000."
+      },
+      "binPath": {
+        "type": "string",
+        "description": "Path to the compresh-mcp executable. Default: compresh-mcp (resolved on PATH). Override if installed somewhere non-standard."
+      },
+      "binArgs": {
+        "type": "string",
+        "description": "Extra space-separated arguments passed to the compresh-mcp subprocess. Default: none."
       }
+    }
+  },
+  "uiHints": {
+    "apiKey": {
+      "label": "Compresh API key",
+      "help": "Get one at https://compre.sh. Read by the compresh-mcp subprocess via COMPRESH_API_KEY.",
+      "placeholder": "sk-comp_...",
+      "sensitive": true
+    },
+    "endpoint": {
+      "label": "Endpoint override",
+      "advanced": true
+    },
+    "protectionMode": {
+      "label": "Protection mode",
+      "help": "Trailing raw messages preserved without compression: aggressive=2, balanced=4, conservative=8."
+    },
+    "providerHint": {
+      "label": "Provider hint",
+      "advanced": true
+    },
+    "modelHint": {
+      "label": "Model hint",
+      "advanced": true
+    },
+    "minMessages": {
+      "label": "Minimum messages",
+      "advanced": true
+    },
+    "timeoutMs": {
+      "label": "Timeout (ms)",
+      "advanced": true
+    },
+    "binPath": {
+      "label": "compresh-mcp path",
+      "advanced": true
+    },
+    "binArgs": {
+      "label": "compresh-mcp args",
+      "advanced": true
     }
   }
 }
