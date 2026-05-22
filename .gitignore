@@ -1,5 +1,7 @@
 node_modules/
-dist/
+# dist/ is tracked on purpose: ClawHub fetches the GitHub tree and ships
+# the built runtimeExtensions (./dist/index.js). Keep dist committed so the
+# published plugin carries built JS instead of falling back to TS compilation.
 *.tsbuildinfo
 .DS_Store
 .env
