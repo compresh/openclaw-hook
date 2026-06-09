@@ -14,6 +14,9 @@ Your **provider API key never leaves OpenClaw**. Only the transcript is sent to 
 
 - **OpenClaw** v2026.5.0 or later
 - **Node.js** 18+
+- **`compresh-mcp>=0.2.5`** (`pip install --user "compresh-mcp>=0.2.5"`) — the hook
+  relays its `compress` result. 0.2.5+ gives tagless compressed context and
+  tier-correct LexRank placement (free → local; paid → server `/v1/tul1`).
 - A Compresh API key (`sk-comp_...`) — sign up at [compre.sh/signup](https://compre.sh/signup)
 
 ## Install

@@ -1,5 +1,5 @@
 /**
- * @compresh/openclaw-hook — v0.3.3
+ * @compresh/openclaw-hook — v0.3.4
  *
  * Plugin SDK hook for per-turn context compression via Compresh.
  * Transport: stdio MCP to `compresh-mcp` (Python, pipx-installed).
@@ -19,8 +19,14 @@
  *   - llm_output: observation only — usage + budget telemetry
  *
  * Prereq:
- *   pip install --user compresh-mcp        # or: pipx install compresh-mcp
- *   export COMPRESH_API_KEY='sk-comp_...'  # picked up by compresh-mcp
+ *   pip install --user "compresh-mcp>=0.2.5"   # or: pipx install "compresh-mcp>=0.2.5"
+ *   export COMPRESH_API_KEY='sk-comp_...'       # picked up by compresh-mcp
+ *
+ * compresh-mcp >= 0.2.5 recommended: TAGLESS compressed context (no Q: marker
+ * lines reach the model) + tier-correct LexRank (free → local @6a; paid →
+ * server /v1/tul1 @9). The hook just relays compresh-mcp's `compress` result,
+ * so it inherits this automatically; older compresh-mcp works with pre-0.2.5
+ * behaviour.
  *
  * @license MIT
  * @author Compresh Ltd <hello@compre.sh>
@@ -144,7 +150,7 @@ async function ensureMcpClient(binPath, binArgs, apiKey, log) {
                     // re-emit through our own logger (which goes to the gateway log).
                     stderr: 'pipe',
                 });
-                const client = new Client({ name: 'compresh-openclaw-hook', version: '0.3.3' }, { capabilities: {} });
+                const client = new Client({ name: 'compresh-openclaw-hook', version: '0.3.4' }, { capabilities: {} });
                 await client.connect(mcpTransport);
                 mcpClient = client;
                 log(`[compresh] mcp-connected bin=${binPath}`);
@@ -218,7 +224,7 @@ export default definePluginEntry({
                 console.error(msg);
             }
         };
-        log(`[compresh] register v0.3.3 transport=mcp logger=${logger ? 'present' : 'console.error'}`);
+        log(`[compresh] register v0.3.4 transport=mcp logger=${logger ? 'present' : 'console.error'}`);
         // ── before_prompt_build: rewrite history → compressed system context ──
         api.on('before_prompt_build', async (event, ctx) => {
             const cfg = readConfig(api, ctx);
