@@ -24,7 +24,7 @@
  *
  * compresh-mcp >= 0.2.5 recommended: TAGLESS compressed context (no Q: marker
  * lines reach the model) + tier-correct LexRank (free → local @6a; paid →
- * server /v1/tul1 @9). The hook just relays compresh-mcp's `compress` result,
+ * server /v1/tul2 @9). The hook just relays compresh-mcp's `compress` result,
  * so it inherits this automatically; older compresh-mcp works with pre-0.2.5
  * behaviour.
  *

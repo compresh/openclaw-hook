@@ -1,6 +1,6 @@
 {
   "name": "@compresh/openclaw-hook",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "description": "OpenClaw Plugin SDK hook for per-turn context compression via Compresh — episodic memory architecture for LLMs",
   "keywords": [
     "openclaw",
@@ -55,7 +55,7 @@
     }
   },
   "scripts": {
-    "build": "tsc && cp openclaw.plugin.json dist/openclaw.plugin.json",
+    "build": "rm -rf dist && tsc && cp openclaw.plugin.json dist/openclaw.plugin.json",
     "prepublishOnly": "npm run build"
   },
   "peerDependencies": {
