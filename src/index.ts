@@ -1,5 +1,5 @@
 /**
- * @compresh/openclaw-hook — v0.3.4
+ * @compresh/openclaw-hook — v0.3.6
  *
  * Plugin SDK hook for per-turn context compression via Compresh.
  * Transport: stdio MCP to `compresh-mcp` (Python, pipx-installed).
@@ -190,6 +190,9 @@ function flattenMessages(raw: unknown[]): Array<{ role: string; content: string 
 let mcpClient: Client | null = null;
 let mcpTransport: StdioClientTransport | null = null;
 let mcpConnectPromise: Promise<void> | null = null;
+// Funnel §9: show the activation notice at most once per process (the hook pipes
+// compresh-mcp stderr away from chat, so appendSystemContext is our only user-visible channel).
+let onboardingShown = false;
 
 async function ensureMcpClient(
   binPath: string,
@@ -222,7 +225,7 @@ async function ensureMcpClient(
         });
 
         const client = new Client(
-          { name: 'compresh-openclaw-hook', version: '0.3.4' },
+          { name: 'compresh-openclaw-hook', version: '0.3.6' },
           { capabilities: {} }
         );
 
@@ -312,7 +315,7 @@ export default definePluginEntry({
     };
 
     log(
-      `[compresh] register v0.3.4 transport=mcp logger=${logger ? 'present' : 'console.error'}`
+      `[compresh] register v0.3.6 transport=mcp logger=${logger ? 'present' : 'console.error'}`
     );
 
     // ── before_prompt_build: rewrite history → compressed system context ──
@@ -332,14 +335,21 @@ export default definePluginEntry({
         const sessionId =
           ctx.sessionKey ?? ctx.sessionId ?? `openclaw-${Date.now()}`;
 
-        if (!cfg.apiKey) {
-          log('[compresh] skip: apiKey empty');
-          return undefined;
-        }
+        // Funnel §9: no apiKey → compresh-mcp still runs FREE local TULBASE (it no longer
+        // exits without a key). Don't skip; compress locally and nudge toward TUL 2.0 once.
 
         const client = await ensureMcpClient(cfg.binPath, cfg.binArgs, cfg.apiKey, log);
         if (!client) {
           log('[compresh] skip: mcp client unavailable');
+          if (!onboardingShown) {
+            onboardingShown = true;
+            return {
+              appendSystemContext:
+                '<compresh:notice>Compresh is installed, but the compresh-mcp helper is not. ' +
+                'Install it once: `pipx install compresh-mcp` (or `pip install --user compresh-mcp`). ' +
+                'Then Compresh compresses your context locally, for free.</compresh:notice>',
+            };
+          }
           return undefined;
         }
 
@@ -366,9 +376,17 @@ export default definePluginEntry({
             `saving=${savingChars}chars`
         );
 
-        return {
-          appendSystemContext: `<compresh:history>\n${result.compresh_md}\n</compresh:history>`,
-        };
+        let systemContext = `<compresh:history>\n${result.compresh_md}\n</compresh:history>`;
+        // Funnel §9: running free local TULBASE (no Compresh key) → nudge toward lossless TUL 2.0 once.
+        if (!cfg.apiKey && !onboardingShown) {
+          onboardingShown = true;
+          systemContext +=
+            '\n\n<compresh:notice>Compresh is compressing locally with free TULBASE (extractive ' +
+            'LexRank — lossy). For lossless TUL 2.0 (query-aware retrieval of full older turns), run ' +
+            '`compresh-mcp signup <your-email>`: 5 days free, then $30 of Compresh credit on email ' +
+            'verify. Your model/provider API key never leaves your machine.</compresh:notice>';
+        }
+        return { appendSystemContext: systemContext };
       },
       { priority: 50, timeoutMs: 15000 }
     );
