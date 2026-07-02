@@ -227,7 +227,7 @@ export default definePluginEntry({
                 console.error(msg);
             }
         };
-        log(`[compresh] register v0.3.7 transport=mcp logger=${logger ? 'present' : 'console.error'}`);
+        log(`[compresh] register v0.3.8 transport=mcp logger=${logger ? 'present' : 'console.error'}`);
         // ── before_prompt_build: rewrite history → compressed system context ──
         api.on('before_prompt_build', async (event, ctx) => {
             const cfg = readConfig(api, ctx);

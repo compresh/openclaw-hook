@@ -2,7 +2,7 @@
   "id": "compresh",
   "name": "Compresh",
   "description": "Per-turn context compression — episodic memory architecture for LLM conversations",
-  "version": "0.3.7",
+  "version": "0.3.8",
   "configSchema": {
     "type": "object",
     "additionalProperties": false,

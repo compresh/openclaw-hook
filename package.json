@@ -1,6 +1,6 @@
 {
   "name": "@compresh/openclaw-hook",
-  "version": "0.3.7",
+  "version": "0.3.8",
   "description": "OpenClaw Plugin SDK hook for per-turn context compression via Compresh \u2014 episodic memory architecture for LLMs",
   "keywords": [
     "openclaw",
