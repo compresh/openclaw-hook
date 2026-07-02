@@ -227,7 +227,7 @@ export default definePluginEntry({
                 console.error(msg);
             }
         };
-        log(`[compresh] register v0.3.6 transport=mcp logger=${logger ? 'present' : 'console.error'}`);
+        log(`[compresh] register v0.3.7 transport=mcp logger=${logger ? 'present' : 'console.error'}`);
         // ── before_prompt_build: rewrite history → compressed system context ──
         api.on('before_prompt_build', async (event, ctx) => {
             const cfg = readConfig(api, ctx);
@@ -271,9 +271,11 @@ export default definePluginEntry({
                 onboardingShown = true;
                 systemContext +=
                     '\n\n<compresh:notice>Compresh is compressing locally with free TULBASE (extractive ' +
-                        'LexRank — lossy). For lossless TUL 2.0 (query-aware retrieval of full older turns), run ' +
-                        '`compresh-mcp signup <your-email>`: 5 days free, then $30 of Compresh credit on email ' +
-                        'verify. Your model/provider API key never leaves your machine.</compresh:notice>';
+                        'LexRank — lossy). For lossless TUL 2.0 (query-aware retrieval of full older turns): ' +
+                        'run `compresh-mcp signup <your-email>` for a 5-day taste of TUL 2.0 free, then $30 of ' +
+                        'Compresh credit on email verify — or sign in once with `compresh-mcp login --github` / ' +
+                        '`--google` for instant $30 (provider sign-in counts as verified). Your model/provider ' +
+                        'API key never leaves your machine.</compresh:notice>';
             }
             return { appendSystemContext: systemContext };
         }, { priority: 50, timeoutMs: 15000 });

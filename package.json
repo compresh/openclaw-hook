@@ -1,7 +1,7 @@
 {
   "name": "@compresh/openclaw-hook",
   "version": "0.3.7",
-  "description": "OpenClaw Plugin SDK hook for per-turn context compression via Compresh — episodic memory architecture for LLMs",
+  "description": "OpenClaw Plugin SDK hook for per-turn context compression via Compresh \u2014 episodic memory architecture for LLMs",
   "keywords": [
     "openclaw",
     "openclaw-plugin",
@@ -22,7 +22,7 @@
   "homepage": "https://compre.sh",
   "repository": {
     "type": "git",
-    "url": "https://github.com/compresh/openclaw-hook.git"
+    "url": "git+https://github.com/compresh/openclaw-hook.git"
   },
   "bugs": {
     "url": "https://github.com/compresh/openclaw-hook/issues"
@@ -43,8 +43,12 @@
     "LICENSE"
   ],
   "openclaw": {
-    "extensions": ["./src/index.ts"],
-    "runtimeExtensions": ["./dist/index.js"],
+    "extensions": [
+      "./src/index.ts"
+    ],
+    "runtimeExtensions": [
+      "./dist/index.js"
+    ],
     "compat": {
       "pluginApi": ">=2026.5.0",
       "minGatewayVersion": "2026.5.0"
