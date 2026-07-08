@@ -17,16 +17,17 @@ Your **provider API key never leaves OpenClaw** in either mode. Only the transcr
 
 - **OpenClaw** v2026.5.0 or later
 - **Node.js** 18+
-- **`compresh-mcp>=0.3.2`** (`pipx install compresh-mcp` or `pip install --user "compresh-mcp>=0.3.2"`) — the hook relays its `compress` result.
+- **`compresh-mcp>=0.3.3`** — install with `pipx install compresh-mcp`. (Plain `pip install` fails on Homebrew/Debian system Python with PEP 668 "externally-managed-environment"; pipx is the fix. Check the installed version with `pipx list | grep compresh` — not `compresh-mcp --version`, which starts the MCP server and waits on stdin.)
 
-A Compresh API key (`sk-comp_...`) is **optional**. Get one with either:
+A Compresh API key (`sk-comp_...`) is **optional**. Get one with any of:
 
 ```bash
-compresh-mcp signup you@example.com   # email-only signup, no card
-compresh-mcp login --github           # or sign in with GitHub
+compresh-mcp login --google           # sign in with Google…
+compresh-mcp login --github           # …or GitHub (instant, counts as verified)
+compresh-mcp signup you@example.com   # or email-only signup, no card
 ```
 
-New accounts include a **5-day free TUL 2.0 trial** (no card, no commitment). Verify your email — or sign in with GitHub, which counts as verified — and you get **$30 of free Compresh credit** (we waive our savings-share up to $30). When the trial ends with no credit, the hook falls back to free local tulbase automatically; you never lose compression.
+New accounts include a **5-day free TUL 2.0 trial** (no card, no commitment). Verify your email — or sign in with Google/GitHub, which counts as verified — and you get **$30 of free Compresh credit** (we waive our savings-share up to $30). When the trial ends with no credit, the hook falls back to free local tulbase automatically; you never lose compression.
 
 ## Install
 
@@ -64,13 +65,13 @@ Add `"apiKey": "sk-comp_..."` to `config` to unlock TUL 2.0. Without it the plug
 | Key | Default | Notes |
 |---|---|---|
 | `apiKey` | `$COMPRESH_API_KEY` | Optional. Unlocks TUL 2.0 retrieval on paid models; without it compression is local tulbase. |
-| `binPath` | `compresh-mcp` | Path to the compresh-mcp executable (`$COMPRESH_BIN`). |
+| `binPath` | `compresh-mcp` | Path to the compresh-mcp executable (`$COMPRESH_BIN`). If the gateway runs outside your shell (LaunchAgent/systemd), it may not inherit your `PATH` — set the full path from `which compresh-mcp`. |
 | `binArgs` | — | Extra arguments passed to compresh-mcp (`$COMPRESH_BIN_ARGS`). |
 | `protectionMode` | `balanced` | `aggressive` / `balanced` / `conservative` — trailing raw turns (2 / 4 / 8). |
-| `providerHint` | `anthropic` | Reported in telemetry for per-provider stats. |
-| `modelHint` | `claude-sonnet-4-5` | Reported in telemetry for per-model stats. |
+| `providerHint` | from context | Telemetry only. Derived from the active provider; fallback `anthropic`. |
+| `modelHint` | from context | Telemetry only. Derived from the active model; fallback `claude-sonnet-4-5`. |
 | `minMessages` | `6` | Skip compression below this turn count. |
-| `timeoutMs` | `8000` | Timeout for the compress call. |
+| `timeoutMs` | `10000` | Timeout for the compress call. |
 
 Env variable fallbacks (`COMPRESH_API_KEY`, `COMPRESH_PROTECTION_MODE`, etc.) work for every option.
 
